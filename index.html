@@ -116,6 +116,8 @@
             letter-spacing: 1px;
         }
 
+        .game-card.mahjong .cover { background: linear-gradient(135deg, #1a472a, #166534); }
+
         /* ===== 全屏游戏层 ===== */
         .game-layer {
             display: none;
@@ -214,6 +216,16 @@
                 </div>
             </div>
 
+            <!-- 南京麻将 -->
+            <div class="game-card mahjong" onclick="launchGame('mahjong', '🀄 南京麻将', 'iframe')">
+                <div class="cover">🀄</div>
+                <div class="info">
+                    <h3>南京麻将</h3>
+                    <p>2人对战人机，可碰可杠，横屏游玩</p>
+                    <span class="tag puzzle">棋牌</span>
+                </div>
+            </div>
+
             <!-- 拼图 -->
             <div class="game-card puzzle" onclick="launchGame('puzzle', '🧩 拼图', 'inline')">
                 <div class="cover">🧩</div>
@@ -251,6 +263,7 @@
             snake: '贪吃蛇.html',   // ← 你桌面已有的文件
             tetris: '俄罗斯方块.html', // ← 桌面已有的俄罗斯方块
             plane: '飞机大战.html', // ← 桌面已有的飞机大战
+            mahjong: '南京麻将.html', // ← 南京麻将
             puzzle: null
         };
 

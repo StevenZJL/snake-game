@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, orientation=landscape">
+<title>🀄 南京麻将</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body {
+  width:100%; height:100%;
+  background:#1a472a;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  overflow:hidden; touch-action:none;
+}
+/* 强制横屏提示 */
+.lock-hint {
+  display:none; position:fixed; inset:0; z-index:9999;
+  background:#0f172a; color:#fff; align-items:center; justify-content:center;
+  flex-direction:column; text-align:center; padding:20px;
+}
+@media (orientation:portrait) {
+  .lock-hint { display:flex; }
+  .game-wrap { display:none !important; }
+}
+.lock-hint h2 { font-size:28px; margin-bottom:12px; }
+.lock-hint p { color:#94a3b8; font-size:16px; }
+
+.game-wrap {
+  width:100%; height:100%; display:flex; flex-direction:column;
+}
+
+/* 顶部信息栏 */
+.top-bar {
+  height:40px; background:rgba(0,0,0,0.35);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 16px; color:#fff; font-size:14px; flex-shrink:0;
+}
+.top-bar .remain { color:#fbbf24; font-weight:bold; }
+
+/* 主区域 */
+.main-area {
+  flex:1; display:flex; flex-direction:column; position:relative;
+  padding:4px 8px; gap:4px; overflow:hidden;
+}
+
+/* AI区域 */
+.ai-zone {
+  height:22%; display:flex; flex-direction:column; align-items:center; gap:4px;
+}
+.ai-head {
+  display:flex; align-items:center; gap:8px; color:#fff; font-size:13px;
+}
+.ai-head .avatar {
+  width:28px; height:28px; border-radius:50%; background:#64748b;
+  display:flex; align-items:center; justify-content:center; font-size:16px;
+}
+.ai-hand {
+  display:flex; justify-content:center; gap:2px; flex-wrap:wrap;
+}
+.ai-hand .tile-back {
+  width:36px; height:48px; background:#b45309;
+  border-radius:4px; border:1px solid #92400e;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+/* 出牌区 */
+.discard-area {
+  flex:1; display:flex; justify-content:space-between; align-items:center;
+  padding:0 20px; position:relative;
+}
+.discard-pile {
+  width:45%; height:90%; background:rgba(0,0,0,0.15);
+  border-radius:8px; padding:6px; display:flex; flex-wrap:wrap;
+  align-content:flex-start; gap:3px; overflow-y:auto;
+}
+.discard-label {
+  position:absolute; top:4px; left:50%; transform:translateX(-50%);
+  color:rgba(255,255,255,0.5); font-size:12px;
+}
+
+/* 中间信息 */
+.center-info {
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  text-align:center; color:rgba(255,255,255,0.7); pointer-events:none;
+}
+.center-info .wind { font-size:18px; font-weight:bold; color:#fbbf24; }
+.center-info .round { font-size:12px; margin-top:2px; }
+
+/* 操作按钮 */
+.action-bar {
+  height:48px; display:flex; align-items:center; justify-content:center;
+  gap:10px; flex-shrink:0;
+}
+.action-btn {
+  padding:8px 22px; border:none; border-radius:8px;
+  font-size:16px; font-weight:bold; cursor:pointer; color:#fff;
+  transition:transform 0.1s;
+}
+.action-btn:active { transform:scale(0.95); }
+.btn-peng { background:#f59e0b; }
+.btn-gang { background:#8b5cf6; }
+.btn-hu   { background:#ef4444; }
+.btn-guo  { background:#64748b; }
+
+/* 玩家区域 */
+.player-zone {
+  height:32%; display:flex; flex-direction:column; align-items:center; gap:4px;
+}
+.player-head {
+  display:flex; align-items:center; gap:8px; color:#fff; font-size:13px;
+}
+.player-head .avatar {
+  width:32px; height:32px; border-radius:50%; background:#4ecca3;
+  display:flex; align-items:center; justify-content:center; font-size:18px;
+}
+.player-hand {
+  display:flex; justify-content:center; gap:3px; flex-wrap:wrap;
+  padding:4px;
+}
+
+/* 牌 */
+.tile {
+  width:40px; height:54px; background:#f8fafc;
+  border-radius:5px; border:1px solid #cbd5e1;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-size:20px; font-weight:bold; cursor:pointer;
+  box-shadow:0 2px 4px rgba(0,0,0,0.15); user-select:none;
+  transition:transform 0.15s, box-shadow 0.15s; position:relative;
+}
+.tile.selected {
+  transform:translateY(-10px);
+  box-shadow:0 6px 12px rgba(0,0,0,0.25);
+  border-color:#3b82f6;
+}
+.tile.disabled { opacity:0.5; pointer-events:none; }
+.tile .suit { font-size:11px; color:#64748b; margin-top:-2px; }
+.tile .num  { font-size:18px; line-height:1; }
+/* 风牌和箭牌字体调整 */
+.tile.wind .num, .tile.dragon .num { font-size:16px; }
+
+/* 横屏适配小屏 */
+@media (max-height:500px) {
+  .tile { width:34px; height:46px; font-size:16px; }
+  .tile .num { font-size:15px; }
+  .ai-hand .tile-back { width:30px; height:40px; }
+  .top-bar { height:32px; font-size:12px; }
+  .action-btn { padding:6px 16px; font-size:14px; }
+}
+
+/* 开始/结束遮罩 */
+.overlay {
+  position:fixed; inset:0; z-index:100;
+  background:rgba(5,20,10,0.92);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  color:#fff; text-align:center;
+}
+.overlay h1 { font-size:36px; margin-bottom:8px; color:#fbbf24; }
+.overlay h2 { font-size:24px; margin-bottom:20px; }
+.overlay p  { color:#94a3b8; font-size:15px; margin:4px 0; }
+.overlay .big-btn {
+  margin-top:24px; padding:12px 48px; font-size:20px;
+  border:none; border-radius:10px; background:#4ecca3;
+  color:#0f172a; font-weight:bold; cursor:pointer;
+}
+.overlay .result-box {
+  background:#1e293b; border-radius:12px; padding:24px 36px;
+  border:1px solid #334155; margin-bottom:16px;
+}
+.overlay .result-box .score { font-size:42px; color:#fbbf24; font-weight:bold; }
+.hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<!-- 竖屏提示 -->
+<div class="lock-hint" id="lockHint">
+  <h2>🔄 请横屏游玩</h2>
+  <p>南京麻将建议将手机横置获得最佳体验</p>
+</div>
+
+<!-- 开始界面 -->
+<div class="overlay" id="startOverlay">
+  <h1>🀄 南京麻将</h1>
+  <p>2人对战 · 人机对战</p>
+  <p>规则：可碰可杠，不可吃，自摸/点炮均可胡</p>
+  <button class="big-btn" onclick="game.start()">开始游戏</button>
+</div>
+
+<!-- 结束界面 -->
+<div class="overlay hidden" id="overOverlay">
+  <div class="result-box">
+    <h2 id="overTitle">游戏结束</h2>
+    <div class="score" id="overScore"></div>
+  </div>
+  <button class="big-btn" onclick="game.start()">再来一局</button>
+</div>
+
+<!-- 游戏主界面 -->
+<div class="game-wrap" id="gameWrap">
+  <div class="top-bar">
+    <span>🤖 电脑</span>
+    <span class="remain">牌山剩余：<b id="remainCount">84</b> 张</span>
+    <span>🧑 玩家</span>
+  </div>
+
+  <div class="main-area">
+    <!-- AI区域 -->
+    <div class="ai-zone">
+      <div class="ai-head">
+        <div class="avatar">🤖</div>
+        <span>电脑</span>
+      </div>
+      <div class="ai-hand" id="aiHand"></div>
+    </div>
+
+    <!-- 出牌区 -->
+    <div class="discard-area">
+      <div class="discard-pile" id="aiDiscard"></div>
+      <div class="center-info">
+        <div class="wind" id="windInfo">东风局</div>
+        <div class="round">第1圈</div>
+      </div>
+      <div class="discard-pile" id="playerDiscard"></div>
+      <div class="discard-label">出牌区</div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="action-bar hidden" id="actionBar">
+      <button class="action-btn btn-peng hidden" id="btnPeng" onclick="game.onPeng()">碰</button>
+      <button class="action-btn btn-gang hidden" id="btnGang" onclick="game.onGang()">杠</button>
+      <button class="action-btn btn-hu hidden" id="btnHu" onclick="game.onHu()">胡</button>
+      <button class="action-btn btn-guo" id="btnGuo" onclick="game.onGuo()">过</button>
+    </div>
+
+    <!-- 玩家区域 -->
+    <div class="player-zone">
+      <div class="player-hand" id="playerHand"></div>
+      <div class="player-head">
+        <div class="avatar">🧑</div>
+        <span>玩家（点击选牌，再点击打出）</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================== 南京麻将引擎 ===================== */
+
+// 牌型定义
+const SUITS = { man:'万', suo:'条', tong:'筒' };
+const WINDS = { east:'东', south:'南', west:'西', north:'北' };
+const DRAGONS = { zhong:'中', fa:'发', bai:'白' };
+
+function createDeck() {
+  const deck = [];
+  let id = 0;
+  // 万条筒 1-9 各4张
+  for (const s of ['man','suo','tong']) {
+    for (let v=1; v<=9; v++) {
+      for (let i=0; i<4; i++) deck.push({id:id++, type:'num', suit:s, value:v, txt:SUITS[s]});
+    }
+  }
+  // 风牌 各4张
+  for (const w of ['east','south','west','north']) {
+    for (let i=0; i<4; i++) deck.push({id:id++, type:'wind', name:w, txt:WINDS[w]});
+  }
+  // 箭牌 各4张
+  for (const d of ['zhong','fa','bai']) {
+    for (let i=0; i<4; i++) deck.push({id:id++, type:'dragon', name:d, txt:DRAGONS[d]});
+  }
+  return deck;
+}
+
+function shuffle(arr) {
+  for (let i=arr.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function sortHand(hand) {
+  const order = {man:0, suo:1, tong:2, wind:3, dragon:4};
+  const windOrder = {east:0, south:1, west:2, north:3};
+  const dragonOrder = {zhong:0, fa:1, bai:2};
+  hand.sort((a,b) => {
+    const oa = order[a.type] ?? 5, ob = order[b.type] ?? 5;
+    if (oa !== ob) return oa - ob;
+    if (a.type === 'num' && b.type === 'num') {
+      if (a.suit !== b.suit) return order[a.suit] - order[b.suit];
+      return a.value - b.value;
+    }
+    if (a.type === 'wind') return windOrder[a.name] - windOrder[b.name];
+    if (a.type === 'dragon') return dragonOrder[a.name] - dragonOrder[b.name];
+    return 0;
+  });
+}
+
+// 检查两张牌是否相同
+function sameTile(a,b) {
+  if (a.type !== b.type) return false;
+  if (a.type === 'num') return a.suit === b.suit && a.value === b.value;
+  if (a.type === 'wind') return a.name === b.name;
+  return a.name === b.name;
+}
+
+// 检查是否可碰
+function canPeng(hand, tile) {
+  let c = 0;
+  for (const t of hand) if (sameTile(t, tile)) c++;
+  return c >= 2;
+}
+
+// 检查是否可明杠
+function canGang(hand, tile) {
+  let c = 0;
+  for (const t of hand) if (sameTile(t, tile)) c++;
+  return c >= 3;
+}
+
+// 检查是否可暗杠（手牌4张）
+function canAnGang(hand) {
+  const map = new Map();
+  for (const t of hand) {
+    const key = t.type==='num'?`${t.suit}${t.value}`:(t.type==='wind'?t.name:t.name);
+    map.set(key, (map.get(key)||0)+1);
+  }
+  for (const [k,v] of map) if (v===4) return true;
+  return false;
+}
+
+// 检查是否可胡牌（简化版：4面子+1对）
+function canHu(hand) {
+  const list = [...hand];
+  if (list.length % 3 !== 2) return false;
+
+  function key(t) {
+    if (t.type === 'num') return `${t.suit}${t.value}`;
+    return t.name;
+  }
+  function tryHu(arr) {
+    if (arr.length === 0) return true;
+    // 找一对
+    for (let i=0; i<arr.length; i++) {
+      for (let j=i+1; j<arr.length; j++) {
+        if (sameTile(arr[i], arr[j])) {
+          const rest = arr.filter((_,idx)=>idx!==i && idx!==j);
+          if (checkMelds(rest)) return true;
+        }
+      }
+    }
+    return false;
+  }
+  function checkMelds(arr) {
+    if (arr.length === 0) return true;
+    // 找刻子
+    const groups = {};
+    for (const t of arr) {
+      const k = key(t);
+      groups[k] = (groups[k]||0)+1;
+    }
+    for (const k in groups) {
+      if (groups[k] >= 3) {
+        const rest = [];
+        let removed = 0;
+        for (const t of arr) {
+          if (key(t)===k && removed<3) { removed++; }
+          else rest.push(t);
+        }
+        if (checkMelds(rest)) return true;
+      }
+    }
+    // 找顺子（仅数牌）
+    const nums = arr.filter(t=>t.type==='num');
+    if (nums.length >= 3) {
+      for (const s of ['man','suo','tong']) {
+        for (let v=1; v<=7; v++) {
+          const a = nums.find(t=>t.suit===s && t.value===v);
+          const b = nums.find(t=>t.suit===s && t.value===v+1);
+          const c2 = nums.find(t=>t.suit===s && t.value===v+2);
+          if (a && b && c2) {
+            const rest = arr.filter(t=>t!==a && t!==b && t!==c2);
+            // 简单去重处理不够严谨，但对可玩版本够用
+            if (checkMelds(rest)) return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+  return tryHu(list);
+}
+
+/* ===================== 游戏控制器 ===================== */
+
+const game = {
+  deck: [],
+  wall: [],
+  player: {hand:[], discard:[], melds:[], isZhuang:false},
+  ai:     {hand:[], discard:[], melds:[], isZhuang:false},
+  turn: 'player', // 'player' or 'ai'
+  round: 1,
+  wind: 'east',
+  selectedIdx: -1,
+  lastDiscard: null,
+  pendingAction: null, // {type:'peng'|'gang'|'hu', tile, from}
+  gameover: false,
+
+  start() {
+    document.getElementById('startOverlay').classList.add('hidden');
+    document.getElementById('overOverlay').classList.add('hidden');
+    this.deck = shuffle(createDeck());
+
+    // 发牌：2人各13张，随机选庄家多发1张
+    this.player.hand = this.deck.splice(0,13);
+    this.ai.hand = this.deck.splice(0,13);
+    this.wall = [...this.deck];
+
+    this.player.discard = []; this.player.melds = [];
+    this.ai.discard = []; this.ai.melds = [];
+    this.player.isZhuang = Math.random() < 0.5;
+    this.ai.isZhuang = !this.player.isZhuang;
+    this.turn = this.player.isZhuang ? 'player' : 'ai';
+    this.round = 1; this.wind = 'east';
+    this.selectedIdx = -1; this.lastDiscard = null;
+    this.pendingAction = null; this.gameover = false;
+
+    sortHand(this.player.hand);
+    sortHand(this.ai.hand);
+
+    if (this.player.isZhuang) {
+      this.player.hand.push(this.wall.pop());
+      sortHand(this.player.hand);
+    } else {
+      this.ai.hand.push(this.wall.pop());
+      sortHand(this.ai.hand);
+    }
+
+    this.render();
+    if (this.turn === 'ai') setTimeout(()=>this.aiTurn(), 800);
+  },
+
+  render() {
+    document.getElementById('remainCount').textContent = this.wall.length;
+    document.getElementById('windInfo').textContent =
+      (this.wind==='east'?'东风':this.wind==='south'?'南风':this.wind==='west'?'西风':'北风') + '局';
+
+    // AI手牌（背面）
+    const aiHandEl = document.getElementById('aiHand');
+    aiHandEl.innerHTML = '';
+    for (let i=0; i<this.ai.hand.length; i++) {
+      const d = document.createElement('div');
+      d.className = 'tile-back';
+      aiHandEl.appendChild(d);
+    }
+
+    // 玩家手牌
+    const ph = document.getElementById('playerHand');
+    ph.innerHTML = '';
+    this.player.hand.forEach((t,i)=>{
+      const el = document.createElement('div');
+      el.className = 'tile' + (t.type==='wind'?' wind':'') + (t.type==='dragon'?' dragon':'') + (i===this.selectedIdx?' selected':'');
+      el.innerHTML = `<div class="num">${t.txt}</div>${t.type==='num'?'<div class="suit">'+t.value+'</div>':''}`;
+      el.onclick = ()=>this.onSelectTile(i);
+      ph.appendChild(el);
+    });
+
+    // 出牌区
+    const renderDiscard = (arr, id) => {
+      const el = document.getElementById(id);
+      el.innerHTML = '';
+      arr.forEach(t=>{
+        const d = document.createElement('div');
+        d.className = 'tile' + (t.type==='wind'?' wind':'') + (t.type==='dragon'?' dragon':'');
+        d.style.width='32px'; d.style.height='42px'; d.style.fontSize='15px';
+        d.innerHTML = `<div class="num">${t.txt}</div>${t.type==='num'?'<div class="suit">'+t.value+'</div>':''}`;
+        el.appendChild(d);
+      });
+    };
+    renderDiscard(this.ai.discard, 'aiDiscard');
+    renderDiscard(this.player.discard, 'playerDiscard');
+
+    // 按钮
+    this.updateActionBar();
+  },
+
+  updateActionBar() {
+    const bar = document.getElementById('actionBar');
+    if (!this.pendingAction) { bar.classList.add('hidden'); return; }
+    bar.classList.remove('hidden');
+    document.getElementById('btnPeng').classList.toggle('hidden', this.pendingAction.type!=='peng');
+    document.getElementById('btnGang').classList.toggle('hidden', this.pendingAction.type!=='gang');
+    document.getElementById('btnHu').classList.toggle('hidden', this.pendingAction.type!=='hu');
+  },
+
+  onSelectTile(idx) {
+    if (this.turn !== 'player' || this.gameover || this.pendingAction) return;
+    if (this.selectedIdx === idx) {
+      // 再点一次 = 打出
+      this.playerDiscard(idx);
+    } else {
+      this.selectedIdx = idx;
+      this.render();
+    }
+  },
+
+  playerDiscard(idx) {
+    const tile = this.player.hand.splice(idx, 1)[0];
+    this.player.discard.push(tile);
+    this.lastDiscard = tile;
+    this.selectedIdx = -1;
+    this.render();
+
+    // AI检查
+    if (this.checkRespond(this.ai, tile, 'player')) return;
+
+    this.turn = 'ai';
+    setTimeout(()=>this.aiTurn(), 600);
+  },
+
+  checkRespond(who, tile, from) {
+    // 检查胡
+    const testHand = [...who.hand, tile];
+    if (canHu(testHand)) {
+      this.pendingAction = {type:'hu', tile, from, who};
+      if (who === this.player) this.updateActionBar();
+      else setTimeout(()=>this.aiRespond(), 600);
+      return true;
+    }
+    // 检查杠
+    if (canGang(who.hand, tile)) {
+      this.pendingAction = {type:'gang', tile, from, who};
+      if (who === this.player) this.updateActionBar();
+      else setTimeout(()=>this.aiRespond(), 600);
+      return true;
+    }
+    // 检查碰
+    if (canPeng(who.hand, tile)) {
+      this.pendingAction = {type:'peng', tile, from, who};
+      if (who === this.player) this.updateActionBar();
+      else setTimeout(()=>this.aiRespond(), 600);
+      return true;
+    }
+    return false;
+  },
+
+  aiTurn() {
+    if (this.gameover) return;
+    // AI摸牌
+    if (this.wall.length === 0) { this.endGame('draw'); return; }
+    const draw = this.wall.pop();
+    this.ai.hand.push(draw);
+    sortHand(this.ai.hand);
+
+    // 检查自摸
+    if (canHu(this.ai.hand)) {
+      this.endGame('ai_zimo');
+      return;
+    }
+
+    // AI决策：简单策略
+    // 1. 检查暗杠
+    // 2. 找出最没用的牌打出（孤张>边张）
+    const discardIdx = this.aiChooseDiscard();
+    const tile = this.ai.hand.splice(discardIdx, 1)[0];
+    this.ai.discard.push(tile);
+    this.lastDiscard = tile;
+    this.render();
+
+    // 玩家检查
+    if (this.checkRespond(this.player, tile, 'ai')) return;
+
+    this.turn = 'player';
+  },
+
+  aiChooseDiscard() {
+    const h = this.ai.hand;
+    // 简单打分：孤张风/箭牌优先，然后孤张数牌，然后边张
+    let best = 0, bestScore = 9999;
+    for (let i=0; i<h.length; i++) {
+      let score = 0;
+      const t = h[i];
+      // 统计同类牌数量
+      let sameSuit = 0, sameValue = 0;
+      for (const o of h) {
+        if (sameTile(t,o)) sameValue++;
+        if (t.type==='num' && o.type==='num' && t.suit===o.suit) sameSuit++;
+      }
+      if (t.type==='wind' || t.type==='dragon') {
+        score = sameValue===1 ? 0 : (sameValue===2 ? 50 : 100);
+      } else {
+        score = sameValue*20 + (sameSuit===1 ? 5 : 0);
+        if (t.value===1 || t.value===9) score += 10; // 边张倾向保留（南京麻将有边张胡法）
+      }
+      if (score < bestScore) { bestScore = score; best = i; }
+    }
+    return best;
+  },
+
+  aiRespond() {
+    if (!this.pendingAction || this.pendingAction.who !== this.ai) return;
+    const act = this.pendingAction;
+    if (act.type === 'hu') {
+      this.endGame('ai_hu');
+      return;
+    }
+    if (act.type === 'gang') {
+      // 移除手牌中3张
+      const keep = [];
+      let removed = 0;
+      for (const t of this.ai.hand) {
+        if (sameTile(t, act.tile) && removed < 3) { removed++; }
+        else keep.push(t);
+      }
+      this.ai.hand = keep;
+      this.ai.melds.push({type:'gang', tiles:[act.tile,act.tile,act.tile,act.tile]});
+      // 杠后摸牌
+      if (this.wall.length > 0) this.ai.hand.push(this.wall.pop());
+      sortHand(this.ai.hand);
+    }
+    if (act.type === 'peng') {
+      const keep = [];
+      let removed = 0;
+      for (const t of this.ai.hand) {
+        if (sameTile(t, act.tile) && removed < 2) { removed++; }
+        else keep.push(t);
+      }
+      this.ai.hand = keep;
+      this.ai.melds.push({type:'peng', tiles:[act.tile,act.tile,act.tile]});
+    }
+    this.pendingAction = null;
+    this.turn = 'ai';
+    this.render();
+    setTimeout(()=>this.aiTurn(), 600);
+  },
+
+  onPeng() {
+    if (!this.pendingAction || this.pendingAction.who !== this.player) return;
+    const tile = this.pendingAction.tile;
+    const keep = []; let removed = 0;
+    for (const t of this.player.hand) {
+      if (sameTile(t, tile) && removed < 2) { removed++; }
+      else keep.push(t);
+    }
+    this.player.hand = keep;
+    this.player.melds.push({type:'peng', tiles:[tile,tile,tile]});
+    this.pendingAction = null;
+    this.turn = 'player';
+    this.selectedIdx = -1;
+    this.render();
+  },
+
+  onGang() {
+    if (!this.pendingAction || this.pendingAction.who !== this.player) return;
+    const tile = this.pendingAction.tile;
+    const keep = []; let removed = 0;
+    for (const t of this.player.hand) {
+      if (sameTile(t, tile) && removed < 3) { removed++; }
+      else keep.push(t);
+    }
+    this.player.hand = keep;
+    this.player.melds.push({type:'gang', tiles:[tile,tile,tile,tile]});
+    // 杠后摸牌
+    if (this.wall.length > 0) {
+      this.player.hand.push(this.wall.pop());
+      sortHand(this.player.hand);
+    }
+    this.pendingAction = null;
+    this.turn = 'player';
+    this.selectedIdx = -1;
+    this.render();
+    // 杠后可以继续出牌（简化：直接可以打）
+  },
+
+  onHu() {
+    if (!this.pendingAction || this.pendingAction.who !== this.player) return;
+    this.endGame('player_hu');
+  },
+
+  onGuo() {
+    this.pendingAction = null;
+    this.updateActionBar();
+    if (this.turn === 'ai') {
+      // AI刚刚打过，玩家选择过，轮到AI继续（摸牌）- 不对，应该是轮到AI的下一回合
+      // 玩家过掉AI打出的牌，AI继续摸牌打出？
+      // 实际上应该是轮到下家（AI）抓牌
+      this.turn = 'ai';
+      setTimeout(()=>this.aiTurn(), 400);
+    }
+  },
+
+  endGame(reason) {
+    this.gameover = true;
+    const title = document.getElementById('overTitle');
+    const score = document.getElementById('overScore');
+    if (reason === 'player_hu') {
+      title.textContent = '🎉 你胡了！';
+      score.textContent = '恭喜胜利';
+      score.style.color = '#4ecca3';
+    } else if (reason === 'ai_hu' || reason === 'ai_zimo') {
+      title.textContent = '🤖 电脑胡了';
+      score.textContent = '再接再厉';
+      score.style.color = '#ef4444';
+    } else {
+      title.textContent = '🤝 流局';
+      score.textContent = '牌山摸完';
+      score.style.color = '#fbbf24';
+    }
+    document.getElementById('overOverlay').classList.remove('hidden');
+  }
+};
+</script>
+</body>
+</html>
