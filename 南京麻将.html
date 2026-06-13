@@ -406,7 +406,7 @@ const game = {
   start() {
     document.getElementById('startOverlay').classList.add('hidden');
     document.getElementById('overOverlay').classList.add('hidden');
-    AudioSys.init();
+    try { AudioSys.init(); } catch(e) {}
 
     this.deck=shuffle(createDeck());
     this.player.hand=this.deck.splice(0,13);
@@ -416,7 +416,6 @@ const game = {
     this.player.discard=[]; this.player.melds=[]; this.player.newTile=null;
     this.ai.discard=[]; this.ai.melds=[]; this.ai.newTile=null;
 
-    // 随机庄家
     this.player.isZhuang=Math.random()<0.5;
     this.ai.isZhuang=!this.player.isZhuang;
     this.turn=this.player.isZhuang?'player':'ai';
@@ -425,11 +424,18 @@ const game = {
 
     sortHand(this.player.hand); sortHand(this.ai.hand);
 
-    this.render();
-    document.getElementById('lastTile').textContent=this.player.isZhuang?'你是庄家':'电脑是庄家';
-    document.getElementById('centerHint').textContent='点击"摸牌"开始';
-    document.getElementById('playerHint').textContent='点击"摸牌"抓牌';
-    this.updateActionBar();
+    this.render(); this.updateActionBar();
+
+    if (this.player.isZhuang) {
+      document.getElementById('lastTile').textContent='你是庄家，先行动';
+      document.getElementById('centerHint').textContent='点击"摸牌"开始';
+      document.getElementById('playerHint').textContent='点击"摸牌"抓牌';
+    } else {
+      document.getElementById('lastTile').textContent='电脑是庄家';
+      document.getElementById('centerHint').textContent='电脑思考中...';
+      document.getElementById('playerHint').textContent='等待电脑';
+      setTimeout(()=>this.aiDraw(), 1200);
+    }
   },
 
   // 渲染牌
@@ -668,18 +674,20 @@ const game = {
       return true;
     }
 
-    // 无人响应，轮到对方
+    // 无人响应，轮到对方抓牌
     if (who==='ai') {
-      this.turn='player'; this.phase='idle';
-      document.getElementById('centerHint').textContent='点击"摸牌"抓牌';
-      document.getElementById('playerHint').textContent='点击"摸牌"抓牌';
-    } else {
+      // AI不响应玩家打出的牌 → AI抓牌
       this.turn='ai'; this.phase='idle';
       document.getElementById('centerHint').textContent='电脑回合';
       document.getElementById('playerHint').textContent='等待电脑';
       setTimeout(()=>this.aiDraw(), 800);
+    } else {
+      // 玩家不响应AI打出的牌 → 玩家抓牌
+      this.turn='player'; this.phase='idle';
+      document.getElementById('centerHint').textContent='点击"摸牌"抓牌';
+      document.getElementById('playerHint').textContent='点击"摸牌"抓牌';
+      this.updateActionBar();
     }
-    this.updateActionBar();
     return false;
   },
 
