@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; background: #1a1a2e;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #fff; overflow: hidden;
+        }
+        h1 { margin-bottom: 12px; font-size: 42px; color: #4ecca3; }
+        .score-board { display: flex; gap: 40px; margin-bottom: 16px; font-size: 20px; }
+        .score-board span { color: #aaa; }
+        .score-board strong { color: #4ecca3; font-size: 26px; }
+        .bonus-info { color: #ffd700; font-size: 16px; margin-bottom: 10px; height: 22px; }
+        canvas {
+            border: 3px solid #4ecca3; border-radius: 6px; background: #16213e;
+            box-shadow: 0 0 30px rgba(78, 204, 163, 0.25);
+        }
+        .controls { margin-top: 18px; text-align: center; color: #888; font-size: 15px; }
+        .controls p { margin: 4px 0; }
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.88); z-index: 100; display: none;
+        }
+        .overlay-box {
+            text-align: center; background: #0f172a;
+            padding: 40px 60px; border-radius: 12px; border: 2px solid #4ecca3;
+        }
+        .overlay-box h2 { font-size: 38px; margin-bottom: 16px; }
+        .overlay-box p { font-size: 20px; margin-bottom: 8px; color: #ccc; }
+        .overlay-box button {
+            margin-top: 20px; padding: 12px 40px; font-size: 20px;
+            border: none; border-radius: 8px; background: #4ecca3;
+            color: #1a1a2e; cursor: pointer; font-weight: bold;
+        }
+        .overlay-box button:hover { background: #3db892; }
+    </style>
+</head>
+<body>
+    <h1>🐍 贪吃蛇</h1>
+    <div class="score-board">
+        <div>得分: <strong id="score">0</strong></div>
+        <div>最高分: <strong id="high">0</strong></div>
+    </div>
+    <div class="bonus-info" id="bonusInfo"></div>
+    <canvas id="game" width="800" height="800"></canvas>
+    <div class="controls">
+        <p>↵ 回车开始 / 重新开始 ｜ ← ↑ ↓ → 方向键</p>
+        <p>ESC 暂停 / 继续 ｜ 空格 按住加速</p>
+    </div>
+
+    <div class="overlay" id="startOverlay">
+        <div class="overlay-box">
+            <h2 style="color:#4ecca3">贪吃蛇</h2>
+            <p>按回车开始游戏</p>
+            <button id="btnStart">开始游戏</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="pauseOverlay">
+        <div class="overlay-box" style="border-color:#f39c12">
+            <h2 style="color:#f39c12">已暂停</h2>
+            <p>按 ESC 继续</p>
+        </div>
+    </div>
+
+    <div class="overlay" id="overOverlay">
+        <div class="overlay-box" style="border-color:#e74c3c">
+            <h2 style="color:#e74c3c">游戏结束</h2>
+            <p>最终得分: <strong id="finalScore" style="color:#4ecca3">0</strong></p>
+            <p>按回车重新开始</p>
+            <button id="btnRestart">重新开始</button>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const highEl = document.getElementById('high');
+        const finalScoreEl = document.getElementById('finalScore');
+        const bonusInfoEl = document.getElementById('bonusInfo');
+        const startOverlay = document.getElementById('startOverlay');
+        const pauseOverlay = document.getElementById('pauseOverlay');
+        const overOverlay = document.getElementById('overOverlay');
+
+        const gridSize = 25;
+        const tileCount = 32;
+        const BASE_SPEED = 140;
+        const BOOST_SPEED = 60;
+
+        let snake = [], food = {}, dx = 0, dy = 0, score = 0;
+        let highScore = parseInt(localStorage.getItem('snakeHigh') || '0');
+        let state = 'start'; // start / running / paused / over
+        let boosting = false;
+        let lastFrame = 0;
+        let lastUpdateTime = 0;
+        let nextDir = null;
+
+        // 高分道具系统
+        let bonus = null; // {x, y, points, timer, maxTimer, flashPhase}
+        let foodsEaten = 0; // 吃掉的普通食物数
+        const BONUS_POINTS = 50;
+        const BONUS_DURATION = 10; // 秒
+        const BONUS_CHANCE = 0.4; // 40% 概率出现
+        const BONUS_MIN_INTERVAL = 2; // 至少吃2个普通食物后才可能出
+        const BONUS_MAX_INTERVAL = 5; // 最多吃5个普通食物后必定出
+
+        highEl.textContent = highScore;
+
+        function initSnake() {
+            snake = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+            dx = 1; dy = 0;
+        }
+        function placeFood() {
+            food.x = Math.floor(Math.random() * tileCount);
+            food.y = Math.floor(Math.random() * tileCount);
+            for (let s of snake) { if (s.x === food.x && s.y === food.y) { placeFood(); return; } }
+        }
+        function placeBonus() {
+            let bx = Math.floor(Math.random() * tileCount);
+            let by = Math.floor(Math.random() * tileCount);
+            // 不能和蛇或食物重叠
+            for (let s of snake) { if (s.x === bx && s.y === by) { placeBonus(); return; } }
+            if (bx === food.x && by === food.y) { placeBonus(); return; }
+            bonus = {
+                x: bx, y: by,
+                points: BONUS_POINTS,
+                timer: BONUS_DURATION,
+                maxTimer: BONUS_DURATION,
+                flashPhase: 0
+            };
+        }
+        function clearBonus() { bonus = null; bonusInfoEl.textContent = ''; }
+
+        function trySpawnBonus() {
+            if (bonus) return; // 已有道具不生成
+            // 随机间隔检查
+            if (foodsEaten >= BONUS_MIN_INTERVAL) {
+                const force = foodsEaten >= BONUS_MAX_INTERVAL;
+                if (force || Math.random() < BONUS_CHANCE) {
+                    placeBonus();
+                    foodsEaten = 0;
+                }
+            }
+        }
+
+        function startGame() {
+            score = 0; scoreEl.textContent = '0';
+            initSnake(); placeFood(); state = 'running';
+            startOverlay.style.display = 'none';
+            overOverlay.style.display = 'none';
+            bonus = null; foodsEaten = 0; bonusInfoEl.textContent = '';
+        }
+        function togglePause() {
+            if (state === 'running') { state = 'paused'; pauseOverlay.style.display = 'flex'; }
+            else if (state === 'paused') { state = 'running'; pauseOverlay.style.display = 'none'; }
+        }
+        function gameOver() {
+            state = 'over'; finalScoreEl.textContent = score; overOverlay.style.display = 'flex';
+            if (score > highScore) { highScore = score; localStorage.setItem('snakeHigh', highScore); highEl.textContent = highScore; }
+        }
+
+        function update(timestamp) {
+            if (state !== 'running') return;
+            const dt = lastUpdateTime ? (timestamp - lastUpdateTime) / 1000 : 0;
+            lastUpdateTime = timestamp;
+            if (nextDir) { dx = nextDir.dx; dy = nextDir.dy; nextDir = null; }
+            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) { gameOver(); return; }
+            for (let s of snake) { if (head.x === s.x && head.y === s.y) { gameOver(); return; } }
+            snake.unshift(head);
+
+            let ate = false;
+            if (head.x === food.x && head.y === food.y) {
+                score += 10; foodsEaten++; ate = true; scoreEl.textContent = score; placeFood(); trySpawnBonus();
+            }
+            // 检查是否吃到高分道具
+            if (bonus && head.x === bonus.x && head.y === bonus.y) {
+                score += bonus.points; scoreEl.textContent = score; clearBonus(); ate = true;
+            }
+            if (!ate) { snake.pop(); }
+
+            // 更新道具倒计时
+            if (bonus) {
+                bonus.timer -= dt;
+                bonus.flashPhase += 1;
+                if (bonus.timer <= 0) { clearBonus(); }
+                else { bonusInfoEl.textContent = `⭐ 高分道具 +${bonus.points}分！剩余 ${Math.ceil(bonus.timer)} 秒`; }
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = '#16213e'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#0f3460'; ctx.lineWidth = 0.6;
+            for (let i = 0; i <= tileCount; i++) {
+                ctx.beginPath(); ctx.moveTo(i*gridSize, 0); ctx.lineTo(i*gridSize, canvas.height); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, i*gridSize); ctx.lineTo(canvas.width, i*gridSize); ctx.stroke();
+            }
+            // 食物
+            ctx.fillStyle = '#e74c3c'; ctx.beginPath();
+            ctx.arc(food.x*gridSize+gridSize/2, food.y*gridSize+gridSize/2, gridSize/2-3, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#ff6b6b'; ctx.beginPath();
+            ctx.arc(food.x*gridSize+gridSize/2-3, food.y*gridSize+gridSize/2-3, 3, 0, Math.PI*2); ctx.fill();
+
+            // 高分道具（金色闪烁）
+            if (bonus) {
+                const flash = (bonus.flashPhase % 6) < 3; // 闪烁效果
+                const cx = bonus.x*gridSize + gridSize/2;
+                const cy = bonus.y*gridSize + gridSize/2;
+                // 外圈光晕
+                ctx.fillStyle = flash ? 'rgba(255,215,0,0.25)' : 'rgba(255,215,0,0.1)';
+                ctx.beginPath(); ctx.arc(cx, cy, gridSize/2+2, 0, Math.PI*2); ctx.fill();
+                // 星星本体
+                ctx.fillStyle = '#ffd700';
+                drawStar(ctx, cx, cy, 5, gridSize/2-2, gridSize/4-1);
+            }
+
+            // 蛇
+            for (let i = 0; i < snake.length; i++) {
+                const s = snake[i];
+                if (i === 0) ctx.fillStyle = '#4ecca3';
+                else { const r = i / snake.length; ctx.fillStyle = `rgb(${45+r*28},${138-r*40},${110-r*20})`; }
+                ctx.fillRect(s.x*gridSize+1, s.y*gridSize+1, gridSize-2, gridSize-2);
+                if (i === 0) {
+                    ctx.fillStyle = '#1a1a2e'; const e = 4;
+                    if (dx===1) { ctx.fillRect(s.x*gridSize+16,s.y*gridSize+6,e,e); ctx.fillRect(s.x*gridSize+16,s.y*gridSize+15,e,e); }
+                    else if (dx===-1) { ctx.fillRect(s.x*gridSize+5,s.y*gridSize+6,e,e); ctx.fillRect(s.x*gridSize+5,s.y*gridSize+15,e,e); }
+                    else if (dy===-1) { ctx.fillRect(s.x*gridSize+6,s.y*gridSize+5,e,e); ctx.fillRect(s.x*gridSize+15,s.y*gridSize+5,e,e); }
+                    else { ctx.fillRect(s.x*gridSize+6,s.y*gridSize+16,e,e); ctx.fillRect(s.x*gridSize+15,s.y*gridSize+16,e,e); }
+                }
+            }
+        }
+
+        // 绘制五角星
+        function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+            let rot = Math.PI / 2 * 3;
+            let x = cx; let y = cy;
+            let step = Math.PI / spikes;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - outerRadius);
+            for (let i = 0; i < spikes; i++) {
+                x = cx + Math.cos(rot) * outerRadius;
+                y = cy + Math.sin(rot) * outerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+                x = cx + Math.cos(rot) * innerRadius;
+                y = cy + Math.sin(rot) * innerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+            }
+            ctx.lineTo(cx, cy - outerRadius);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function setDirection(ndx, ndy) {
+            if (state !== 'running') return;
+            if (dx === 0 && ndx !== 0 && Math.abs(ndx) !== Math.abs(dx)) { nextDir = {dx: ndx, dy: 0}; }
+            else if (dy === 0 && ndy !== 0 && Math.abs(ndy) !== Math.abs(dy)) { nextDir = {dx: 0, dy: ndy}; }
+        }
+
+        function onKey(e) {
+            const k = e.key || e.code;
+            const code = e.keyCode || e.which;
+            if (k === 'Enter' || code === 13) {
+                e.preventDefault();
+                if (state === 'start' || state === 'over') startGame();
+                return;
+            }
+            if (k === 'Escape' || code === 27) {
+                e.preventDefault();
+                if (state === 'running' || state === 'paused') togglePause();
+                return;
+            }
+            if (k === ' ' || k === 'Space' || code === 32) {
+                e.preventDefault();
+                if (state === 'running') boosting = true;
+                return;
+            }
+            let handled = false;
+            if (k === 'ArrowUp' || k === 'Up' || code === 38) { setDirection(0, -1); handled = true; }
+            else if (k === 'ArrowDown' || k === 'Down' || code === 40) { setDirection(0, 1); handled = true; }
+            else if (k === 'ArrowLeft' || k === 'Left' || code === 37) { setDirection(-1, 0); handled = true; }
+            else if (k === 'ArrowRight' || k === 'Right' || code === 39) { setDirection(1, 0); handled = true; }
+            if (handled) { e.preventDefault(); }
+        }
+
+        window.addEventListener('keydown', onKey, true);
+        window.addEventListener('keyup', function(e) {
+            if (e.key === ' ' || e.key === 'Space' || e.keyCode === 32) boosting = false;
+        }, true);
+
+        document.getElementById('btnStart').addEventListener('click', startGame);
+        document.getElementById('btnRestart').addEventListener('click', startGame);
+
+        function loop(timestamp) {
+            const interval = boosting ? BOOST_SPEED : BASE_SPEED;
+            if (timestamp - lastFrame >= interval) { update(timestamp); lastFrame = timestamp; }
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        initSnake(); placeFood(); draw();
+        startOverlay.style.display = 'flex';
+        requestAnimationFrame(loop);
+    })();
+    </script>
+</body>
+</html>
