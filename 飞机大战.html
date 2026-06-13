@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>✈️ 飞机大战</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0e1a;
+            overflow: hidden;
+            touch-action: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas { display: block; background: #0a0e1a; }
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(5,8,20,0.92);
+            z-index: 100;
+            flex-direction: column;
+            text-align: center;
+            color: #fff;
+        }
+        .overlay h1 { font-size: 42px; color: #7dd3fc; margin-bottom: 12px; }
+        .overlay .subtitle { color: #94a3b8; font-size: 18px; margin-bottom: 30px; }
+        .controls-info {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 24px 36px;
+            margin-bottom: 30px;
+            border: 1px solid #334155;
+        }
+        .controls-info h3 { color: #7dd3fc; margin-bottom: 14px; font-size: 20px; }
+        .controls-info p { color: #cbd5e1; font-size: 15px; margin: 6px 0; line-height: 1.6; }
+        .controls-info .key { display: inline-block; padding: 2px 8px; background: #334155; border-radius: 4px; font-family: monospace; font-size: 14px; }
+        .btn-start {
+            padding: 14px 50px; font-size: 20px; border: none; border-radius: 10px;
+            background: #3b82f6; color: #fff; cursor: pointer; font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn-start:hover { background: #2563eb; }
+        .score-board {
+            position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+            color: #fff; font-size: 20px; z-index: 50; pointer-events: none;
+            background: rgba(0,0,0,0.4); padding: 6px 20px; border-radius: 20px;
+        }
+        .score-board span { color: #7dd3fc; font-weight: bold; font-size: 24px; }
+    </style>
+</head>
+<body>
+    <div class="score-board" id="scoreBoard" style="display:none">得分: <span id="score">0</span></div>
+
+    <div class="overlay" id="startOverlay">
+        <h1>✈️ 飞机大战</h1>
+        <div class="subtitle">躲避敌机，击落它们！</div>
+        <div class="controls-info">
+            <h3>🖥 电脑操作</h3>
+            <p><span class="key">←</span> <span class="key">↑</span> <span class="key">↓</span> <span class="key">→</span> 方向键移动飞机</p>
+            <p>自动射击，无需按键</p>
+            <h3 style="margin-top:16px">📱 手机操作</h3>
+            <p>手指在屏幕下半区域拖动控制飞机</p>
+            <p>自动射击，无需点击</p>
+        </div>
+        <button class="btn-start" id="btnStart" onclick="startGame()">开始游戏</button>
+    </div>
+
+    <div class="overlay" id="overOverlay" style="display:none">
+        <h1 style="color:#e74c3c">💥 被击中了</h1>
+        <div class="subtitle" style="font-size:22px">最终得分: <span id="finalScore" style="color:#7dd3fc;font-weight:bold;font-size:28px">0</span></div>
+        <button class="btn-start" onclick="restartGame()" style="margin-top:24px">再来一局</button>
+    </div>
+
+    <canvas id="game"></canvas>
+
+<script>
+(function() {
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const startOverlay = document.getElementById('startOverlay');
+    const overOverlay = document.getElementById('overOverlay');
+    const scoreBoard = document.getElementById('scoreBoard');
+    const scoreEl = document.getElementById('score');
+    const finalScoreEl = document.getElementById('finalScore');
+
+    // 适配屏幕
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // 游戏状态
+    let running = false;
+    let score = 0;
+    let lastShot = 0;
+    let lastEnemy = 0;
+    let difficulty = 1;
+
+    // 玩家
+    const player = { x: 0, y: 0, w: 40, h: 50, speed: 6, hp: 1 };
+    const bullets = [];
+    const enemies = [];
+    const particles = [];
+    const stars = [];
+
+    // 初始化星空背景
+    for (let i = 0; i < 80; i++) {
+        stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            r: Math.random() * 2 + 0.5,
+            s: Math.random() * 1 + 0.3
+        });
+    }
+
+    function initPlayer() {
+        player.x = canvas.width / 2 - player.w / 2;
+        player.y = canvas.height - player.h - 40;
+        player.hp = 1;
+    }
+
+    // 输入
+    const keys = {};
+    let touchX = null, touchY = null;
+
+    document.addEventListener('keydown', e => {
+        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) {
+            e.preventDefault();
+        }
+        keys[e.key] = true;
+    });
+    document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+    // 触摸控制（仅下半屏）
+    canvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const t = e.touches[0];
+        if (t.clientY > canvas.height * 0.35) {
+            touchX = t.clientX;
+            touchY = t.clientY;
+        }
+    }, {passive: false});
+    canvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const t = e.touches[0];
+        if (t.clientY > canvas.height * 0.35) {
+            touchX = t.clientX;
+            touchY = t.clientY;
+        }
+    }, {passive: false});
+    canvas.addEventListener('touchend', e => { e.preventDefault(); touchX = null; touchY = null; }, {passive: false});
+
+    // 实体创建
+    function createBullet() {
+        bullets.push({
+            x: player.x + player.w / 2 - 3,
+            y: player.y,
+            w: 6, h: 14, vy: -10, color: '#7dd3fc'
+        });
+    }
+    function createEnemy() {
+        const size = Math.random() < 0.3 ? 50 : 36;
+        const type = size === 50 ? 'big' : (Math.random() < 0.5 ? 'fast' : 'normal');
+        const e = {
+            x: Math.random() * (canvas.width - size),
+            y: -size,
+            w: size, h: size,
+            vy: type === 'fast' ? 4 + difficulty * 0.5 : (2 + difficulty * 0.3),
+            vx: (Math.random() - 0.5) * (type === 'big' ? 1.5 : 1),
+            hp: type === 'big' ? 3 : 1,
+            type: type,
+            color: type === 'big' ? '#e74c3c' : (type === 'fast' ? '#f59e0b' : '#94a3b8')
+        };
+        enemies.push(e);
+    }
+    function createExplosion(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+            particles.push({
+                x, y,
+                vx: (Math.random() - 0.5) * 6,
+                vy: (Math.random() - 0.5) * 6,
+                r: Math.random() * 3 + 1,
+                life: 30 + Math.random() * 20,
+                color: color || '#f59e0b'
+            });
+        }
+    }
+
+    // 碰撞检测
+    function collide(a, b) {
+        return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function update(dt) {
+        if (!running) return;
+
+        // 移动玩家
+        if (keys['ArrowLeft'] || keys['ArrowRight'] || keys['ArrowUp'] || keys['ArrowDown']) {
+            if (keys['ArrowLeft']) player.x -= player.speed;
+            if (keys['ArrowRight']) player.x += player.speed;
+            if (keys['ArrowUp']) player.y -= player.speed;
+            if (keys['ArrowDown']) player.y += player.speed;
+        }
+        // 触摸跟随
+        if (touchX !== null) {
+            const tx = touchX - player.w / 2;
+            const ty = touchY - player.h / 2;
+            player.x += (tx - player.x) * 0.15;
+            player.y += (ty - player.y) * 0.15;
+        }
+
+        // 边界
+        player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
+        player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
+
+        // 自动射击
+        lastShot += dt;
+        if (lastShot > 200) {
+            createBullet();
+            lastShot = 0;
+        }
+
+        // 生成敌机
+        lastEnemy += dt;
+        const spawnRate = Math.max(400, 1200 - difficulty * 80);
+        if (lastEnemy > spawnRate) {
+            createEnemy();
+            lastEnemy = 0;
+        }
+
+        // 更新子弹
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            const b = bullets[i];
+            b.y += b.vy;
+            if (b.y + b.h < 0) { bullets.splice(i, 1); continue; }
+
+            // 击中敌机
+            for (let j = enemies.length - 1; j >= 0; j--) {
+                const e = enemies[j];
+                if (collide(b, e)) {
+                    e.hp--;
+                    bullets.splice(i, 1);
+                    if (e.hp <= 0) {
+                        createExplosion(e.x + e.w/2, e.y + e.h/2, e.color, e.type === 'big' ? 20 : 12);
+                        score += e.type === 'big' ? 50 : (e.type === 'fast' ? 20 : 10);
+                        scoreEl.textContent = score;
+                        enemies.splice(j, 1);
+                    }
+                    break;
+                }
+            }
+        }
+
+        // 更新敌机
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            const e = enemies[i];
+            e.y += e.vy;
+            e.x += e.vx;
+            if (e.x <= 0 || e.x + e.w >= canvas.width) e.vx *= -1;
+            if (e.y > canvas.height) { enemies.splice(i, 1); continue; }
+
+            // 撞玩家
+            if (collide(e, player)) {
+                createExplosion(player.x + player.w/2, player.y + player.h/2, '#7dd3fc', 30);
+                player.hp--;
+                enemies.splice(i, 1);
+                if (player.hp <= 0) gameOver();
+            }
+        }
+
+        // 更新粒子
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx; p.y += p.vy;
+            p.life--;
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+
+        // 更新星空
+        for (let s of stars) {
+            s.y += s.s;
+            if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; }
+        }
+
+        // 难度递增
+        difficulty = 1 + Math.floor(score / 200);
+    }
+
+    // 绘制
+    function draw() {
+        ctx.fillStyle = '#0a0e1a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 星空
+        for (let s of stars) {
+            ctx.fillStyle = '#fff';
+            ctx.globalAlpha = s.r / 2.5;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        if (!running) return;
+
+        // 玩家飞机
+        ctx.fillStyle = '#3b82f6';
+        ctx.beginPath();
+        ctx.moveTo(player.x + player.w/2, player.y);
+        ctx.lineTo(player.x + player.w, player.y + player.h * 0.7);
+        ctx.lineTo(player.x + player.w * 0.8, player.y + player.h);
+        ctx.lineTo(player.x + player.w * 0.2, player.y + player.h);
+        ctx.lineTo(player.x, player.y + player.h * 0.7);
+        ctx.closePath();
+        ctx.fill();
+        // 机翼
+        ctx.fillStyle = '#60a5fa';
+        ctx.fillRect(player.x - 8, player.y + player.h * 0.55, 12, 6);
+        ctx.fillRect(player.x + player.w - 4, player.y + player.h * 0.55, 12, 6);
+        // 引擎光
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(player.x + player.w/2, player.y + player.h - 2, 5, 0, Math.PI*2);
+        ctx.fill();
+
+        // 子弹
+        for (let b of bullets) {
+            ctx.fillStyle = b.color;
+            ctx.shadowColor = b.color;
+            ctx.shadowBlur = 8;
+            ctx.fillRect(b.x, b.y, b.w, b.h);
+            ctx.shadowBlur = 0;
+        }
+
+        // 敌机
+        for (let e of enemies) {
+            ctx.fillStyle = e.color;
+            ctx.beginPath();
+            ctx.moveTo(e.x + e.w/2, e.y + e.h);
+            ctx.lineTo(e.x + e.w, e.y + e.h * 0.3);
+            ctx.lineTo(e.x + e.w * 0.8, e.y);
+            ctx.lineTo(e.x + e.w * 0.2, e.y);
+            ctx.lineTo(e.x, e.y + e.h * 0.3);
+            ctx.closePath();
+            ctx.fill();
+
+            // 血条（大飞机）
+            if (e.type === 'big' && e.hp > 0) {
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(e.x, e.y - 8, e.w, 4);
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(e.x, e.y - 8, e.w * (e.hp / 3), 4);
+            }
+        }
+
+        // 粒子爆炸
+        for (let p of particles) {
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.life / 40;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    function startGame() {
+        startOverlay.style.display = 'none';
+        overOverlay.style.display = 'none';
+        scoreBoard.style.display = 'block';
+        score = 0; difficulty = 1;
+        scoreEl.textContent = '0';
+        bullets.length = 0;
+        enemies.length = 0;
+        particles.length = 0;
+        initPlayer();
+        running = true;
+    }
+    function restartGame() { startGame(); }
+    function gameOver() {
+        running = false;
+        finalScoreEl.textContent = score;
+        overOverlay.style.display = 'flex';
+        scoreBoard.style.display = 'none';
+    }
+
+    let lastTime = 0;
+    function loop(timestamp) {
+        const dt = timestamp - lastTime;
+        lastTime = timestamp;
+        update(dt);
+        draw();
+        requestAnimationFrame(loop);
+    }
+    initPlayer();
+    draw();
+    requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
