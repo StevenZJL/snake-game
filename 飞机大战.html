@@ -391,6 +391,10 @@
         scoreBoard.style.display = 'none';
     }
 
+    // 暴露到全局供按钮调用
+    window.startGame = startGame;
+    window.restartGame = restartGame;
+
     let lastTime = 0;
     function loop(timestamp) {
         const dt = timestamp - lastTime;
