@@ -121,12 +121,18 @@ html,body {
 
 /* 遮罩 */
 .overlay {
-  position:fixed; inset:0; z-index:100; background:rgba(5,15,8,0.92);
+  position:fixed; inset:0; z-index:100; pointer-events:auto; background:rgba(5,15,8,0.92);
   display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; text-align:center;
+  overflow-y:auto; -webkit-overflow-scrolling:touch;
 }
 .overlay h1 { font-size:36px; margin-bottom:8px; color:#fbbf24; }
 .overlay p { color:#94a3b8; font-size:14px; margin:3px 0; line-height:1.5; }
-.overlay .big-btn { margin-top:20px; padding:12px 44px; font-size:20px; border:none; border-radius:10px; background:#4ecca3; color:#0f172a; font-weight:bold; cursor:pointer; }
+.overlay .big-btn {
+  margin-top:20px; padding:12px 44px; font-size:20px; min-height:44px;
+  border:none; border-radius:10px; background:#4ecca3; color:#0f172a;
+  font-weight:bold; cursor:pointer; -webkit-appearance:none; touch-action:manipulation;
+  position:relative; z-index:2;
+}
 .overlay .result-box { background:#1e293b; border-radius:12px; padding:20px 36px; border:1px solid #334155; margin-bottom:12px; }
 .overlay .result-box h2 { font-size:24px; margin-bottom:8px; }
 .overlay .result-box .score { font-size:36px; color:#fbbf24; font-weight:bold; }
@@ -134,6 +140,19 @@ html,body {
 .overlay .rules h3 { color:#fbbf24; font-size:16px; margin-bottom:8px; text-align:center; }
 .overlay .rules li { color:#cbd5e1; font-size:13px; margin:4px 0; list-style:none; padding-left:8px; }
 .hidden { display:none !important; }
+
+/* iPhone 小屏横屏适配 */
+@media (max-height:420px) {
+  .overlay h1 { font-size:24px; margin-bottom:4px; }
+  .overlay .rules { padding:10px 16px; margin-bottom:8px; }
+  .overlay .rules h3 { font-size:13px; margin-bottom:4px; }
+  .overlay .rules li { font-size:11px; margin:2px 0; }
+  .overlay p { font-size:12px; margin:2px 0; }
+  .overlay .big-btn { padding:8px 32px; font-size:16px; margin-top:10px; }
+  .overlay .result-box { padding:14px 24px; }
+  .overlay .result-box h2 { font-size:18px; }
+  .overlay .result-box .score { font-size:28px; }
+}
 
 /* 状态提示 */
 .status-hint { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:50; background:rgba(0,0,0,0.7); color:#fff; padding:8px 20px; border-radius:20px; font-size:14px; pointer-events:none; opacity:0; transition:opacity 0.3s; }
