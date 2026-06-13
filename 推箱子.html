@@ -2,62 +2,60 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
 <title>📦 推箱子</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html,body { width:100%; height:100%; background:#1a1a2e; color:#fff; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+html,body { width:100%; height:100%; background:#0f172a; color:#fff; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; overflow:hidden; display:flex; flex-direction:column; align-items:center; }
 
-.game-header { display:flex; align-items:center; justify-content:space-between; width:100%; max-width:600px; padding:8px 16px; flex-shrink:0; }
-.game-header h1 { font-size:20px; color:#4ecca3; }
-.game-header .level-info { font-size:14px; color:#94a3b8; }
-.game-header .btns { display:flex; gap:8px; }
-.game-header button { padding:6px 14px; border:none; border-radius:6px; background:#334155; color:#fff; font-size:13px; cursor:pointer; }
-.game-header button:hover { background:#475569; }
+.game-header { display:flex; align-items:center; justify-content:space-between; width:100%; max-width:700px; padding:8px 12px; flex-shrink:0; }
+.game-header h1 { font-size:18px; color:#4ecca3; }
+.game-header .info { font-size:13px; color:#94a3b8; }
+.game-header .info b { color:#fbbf24; }
+.game-header .btns { display:flex; gap:6px; }
+.game-header button { padding:5px 12px; border:none; border-radius:5px; background:#334155; color:#fff; font-size:12px; cursor:pointer; -webkit-appearance:none; touch-action:manipulation; }
+.game-header button:active { background:#475569; transform:scale(0.95); }
 
-.board-wrap { flex:1; display:flex; align-items:center; justify-content:center; padding:8px; overflow:auto; }
-#board { display:grid; gap:1px; background:#0f172a; padding:4px; border-radius:8px; border:2px solid #334155; }
-.cell { width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:20px; border-radius:3px; position:relative; }
-.cell.wall { background:#334155; border-radius:3px; }
-.cell.floor { background:#1e293b; }
-.cell.target { background:#1e293b; }
-.cell.target::after { content:''; position:absolute; width:8px; height:8px; background:#fbbf24; border-radius:50%; opacity:0.6; }
-.cell.box { background:#1e293b; }
-.cell.box::before { content:'📦'; font-size:22px; }
-.cell.box-on-target { background:#1e293b; }
-.cell.box-on-target::before { content:'📦'; font-size:22px; }
-.cell.box-on-target::after { content:''; position:absolute; width:8px; height:8px; background:#fbbf24; border-radius:50%; opacity:0.6; }
-.cell.player { background:#1e293b; }
-.cell.player::before { content:'🧑‍🏭'; font-size:22px; }
-.cell.player-on-target { background:#1e293b; }
-.cell.player-on-target::before { content:'🧑‍🏭'; font-size:22px; }
-.cell.player-on-target::after { content:''; position:absolute; width:8px; height:8px; background:#fbbf24; border-radius:50%; opacity:0.6; }
+.level-tabs { display:flex; gap:4px; flex-wrap:wrap; justify-content:center; padding:0 8px 4px; max-width:700px; }
+.level-tab { padding:4px 10px; border:none; border-radius:4px; background:#334155; color:#fff; font-size:12px; cursor:pointer; -webkit-appearance:none; }
+.level-tab.active { background:#4ecca3; color:#0f172a; font-weight:bold; }
+.level-tab.done { background:#059669; color:#fff; }
 
-.controls-bar { padding:8px 16px; display:flex; align-items:center; justify-content:center; gap:12px; flex-shrink:0; }
-.controls-bar .hint { color:#94a3b8; font-size:13px; }
+.board-wrap { flex:1; display:flex; align-items:center; justify-content:center; padding:4px; width:100%; overflow:auto; }
+#board { display:grid; gap:1px; background:#1e293b; padding:3px; border-radius:6px; border:2px solid #334155; }
+.cell { width:34px; height:34px; display:flex; align-items:center; justify-content:center; font-size:20px; border-radius:2px; position:relative; }
+.cell.wall { background:#475569; }
+.cell.floor { background:#0f172a; }
+.cell.target { background:#0f172a; }
+.cell.target::after { content:''; position:absolute; width:6px; height:6px; background:#fbbf24; border-radius:50%; opacity:0.5; }
+.cell.box { background:#0f172a; }
+.cell.box::before { content:'📦'; font-size:22px; z-index:2; }
+.cell.box-on-target { background:#0f172a; }
+.cell.box-on-target::before { content:'📦'; font-size:22px; z-index:2; }
+.cell.box-on-target::after { content:''; position:absolute; width:6px; height:6px; background:#fbbf24; border-radius:50%; opacity:0.5; }
+.cell.player { background:#0f172a; }
+.cell.player::before { content:'🧑‍🏭'; font-size:22px; z-index:2; }
+.cell.player-on-target { background:#0f172a; }
+.cell.player-on-target::before { content:'🧑‍🏭'; font-size:22px; z-index:2; }
+.cell.player-on-target::after { content:''; position:absolute; width:6px; height:6px; background:#fbbf24; border-radius:50%; opacity:0.5; }
 
-/* 虚拟方向键 */
-.dpad { display:none; gap:4px; flex-direction:column; align-items:center; padding:8px; }
+@media (max-width:400px) { .cell { width:28px; height:28px; font-size:16px; } .cell.box::before, .cell.box-on-target::before, .cell.player::before, .cell.player-on-target::before { font-size:18px; } }
+@media (max-height:500px) { .cell { width:26px; height:26px; font-size:14px; } .cell.box::before, .cell.box-on-target::before, .cell.player::before, .cell.player-on-target::before { font-size:16px; } }
+
+.dpad { display:none; flex-direction:column; align-items:center; gap:4px; padding:4px 8px 8px; flex-shrink:0; }
 .dpad-row { display:flex; gap:4px; }
-.dpad-btn { width:56px; height:56px; border:none; border-radius:12px; background:#334155; color:#fff; font-size:22px; display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; -webkit-user-select:none; }
-.dpad-btn:active { background:#475569; transform:scale(0.95); }
-@media (max-width:640px) { .dpad { display:flex; } .controls-bar .hint { display:none; } }
-@media (max-height:500px) { .dpad-btn { width:44px; height:44px; font-size:18px; } }
+.dpad-btn { width:54px; height:54px; border:none; border-radius:10px; background:#334155; color:#fff; font-size:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-appearance:none; touch-action:manipulation; }
+.dpad-btn:active { background:#475569; transform:scale(0.92); }
+@media (max-width:640px) { .dpad { display:flex; } }
+@media (max-height:500px) { .dpad-btn { width:40px; height:40px; font-size:16px; } }
 
-/* 胜利弹窗 */
-.modal { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.8); display:none; align-items:center; justify-content:center; }
+.modal { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.85); display:none; align-items:center; justify-content:center; }
 .modal.show { display:flex; }
-.modal-box { background:#1e293b; border-radius:16px; padding:32px 40px; text-align:center; border:2px solid #4ecca3; }
-.modal-box h2 { font-size:28px; color:#4ecca3; margin-bottom:8px; }
-.modal-box p { color:#94a3b8; font-size:16px; margin-bottom:20px; }
-.modal-box button { padding:10px 30px; border:none; border-radius:8px; background:#4ecca3; color:#0f172a; font-size:16px; font-weight:bold; cursor:pointer; margin:4px; }
-.modal-box button:hover { background:#3db892; }
-
-/* 关卡选择 */
-.level-select { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; padding:4px; }
-.level-tag { padding:4px 10px; border-radius:4px; background:#334155; color:#fff; font-size:12px; cursor:pointer; border:none; }
-.level-tag.active { background:#4ecca3; color:#0f172a; }
-.level-tag.completed { background:#059669; color:#fff; }
+.modal-box { background:#1e293b; border-radius:12px; padding:24px 32px; text-align:center; border:2px solid #4ecca3; max-width:90%; }
+.modal-box h2 { font-size:24px; color:#4ecca3; margin-bottom:8px; }
+.modal-box p { color:#94a3b8; font-size:14px; margin-bottom:16px; }
+.modal-box button { padding:8px 24px; border:none; border-radius:6px; background:#4ecca3; color:#0f172a; font-size:15px; font-weight:bold; cursor:pointer; margin:4px; -webkit-appearance:none; }
+.modal-box button.secondary { background:#64748b; color:#fff; }
 </style>
 </head>
 <body>
@@ -65,7 +63,7 @@ html,body { width:100%; height:100%; background:#1a1a2e; color:#fff; font-family
 <div class="game-header">
   <div>
     <h1>📦 推箱子</h1>
-    <div class="level-info">关卡 <span id="levelNum">1</span> / <span id="totalLevels">0</span> · 步数 <span id="stepCount">0</span></div>
+    <div class="info">关卡 <b id="lvNum">1</b> / <b id="lvTotal">10</b> · 步数 <b id="steps">0</b></div>
   </div>
   <div class="btns">
     <button onclick="game.undo()">↩ 撤销</button>
@@ -73,82 +71,94 @@ html,body { width:100%; height:100%; background:#1a1a2e; color:#fff; font-family
   </div>
 </div>
 
-<div class="level-select" id="levelSelect"></div>
+<div class="level-tabs" id="levelTabs"></div>
 
 <div class="board-wrap">
   <div id="board"></div>
 </div>
 
-<div class="controls-bar">
-  <span class="hint">⌨ 方向键 / WASD 移动 · R 重置 · Z 撤销</span>
-</div>
-
 <div class="dpad" id="dpad">
   <div class="dpad-row">
     <div></div>
-    <button class="dpad-btn" ontouchstart="game.move(0,-1);return false;" onclick="game.move(0,-1)">▲</button>
+    <button class="dpad-btn" id="btnUp">▲</button>
     <div></div>
   </div>
   <div class="dpad-row">
-    <button class="dpad-btn" ontouchstart="game.move(-1,0);return false;" onclick="game.move(-1,0)">◀</button>
-    <button class="dpad-btn" ontouchstart="game.move(0,1);return false;" onclick="game.move(0,1)">▼</button>
-    <button class="dpad-btn" ontouchstart="game.move(1,0);return false;" onclick="game.move(1,0)">▶</button>
+    <button class="dpad-btn" id="btnLeft">◀</button>
+    <button class="dpad-btn" id="btnDown">▼</button>
+    <button class="dpad-btn" id="btnRight">▶</button>
   </div>
 </div>
 
 <div class="modal" id="winModal">
   <div class="modal-box">
     <h2>🎉 过关！</h2>
-    <p id="winMsg">用时 XX 步</p>
+    <p id="winMsg">第 1 关通过！</p>
     <button onclick="game.nextLevel()">下一关 ▶</button>
-    <button onclick="game.reset();document.getElementById('winModal').classList.remove('show')" style="background:#64748b;color:#fff;">重玩本关</button>
+    <button class="secondary" onclick="game.reset();document.getElementById('winModal').classList.remove('show')">重玩</button>
   </div>
 </div>
 
 <script>
-/* ===================== 关卡数据（验证可解） ===================== */
-// 地图符号: #墙 .目标 $箱子 @玩家 空格=地板
-// * = 箱子在目标上, + = 玩家在目标上
+/* ===================== 音效系统 ===================== */
+const AudioSys = {
+  ctx: null,
+  init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+  play(type) {
+    try {
+      this.init();
+      const ctx = this.ctx, t = ctx.currentTime;
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      switch(type) {
+        case 'move': osc.type='sine'; osc.frequency.setValueAtTime(300,t); gain.gain.setValueAtTime(0.15,t); gain.gain.exponentialRampToValueAtTime(0.01,t+0.06); osc.start(t); osc.stop(t+0.06); break;
+        case 'push': osc.type='triangle'; osc.frequency.setValueAtTime(200,t); osc.frequency.exponentialRampToValueAtTime(100,t+0.08); gain.gain.setValueAtTime(0.2,t); gain.gain.exponentialRampToValueAtTime(0.01,t+0.08); osc.start(t); osc.stop(t+0.08); break;
+        case 'wall': osc.type='sawtooth'; osc.frequency.setValueAtTime(120,t); gain.gain.setValueAtTime(0.1,t); gain.gain.exponentialRampToValueAtTime(0.01,t+0.05); osc.start(t); osc.stop(t+0.05); break;
+        case 'undo': osc.type='sine'; osc.frequency.setValueAtTime(500,t); gain.gain.setValueAtTime(0.1,t); gain.gain.exponentialRampToValueAtTime(0.01,t+0.05); osc.start(t); osc.stop(t+0.05); break;
+        case 'win': [523,659,784,1047].forEach((f,i)=>{ const o=ctx.createOscillator(),g=ctx.createGain(); o.connect(g); g.connect(ctx.destination); o.type='sine'; o.frequency.value=f; g.gain.setValueAtTime(0.2,t+i*0.12); g.gain.exponentialRampToValueAtTime(0.01,t+i*0.12+0.25); o.start(t+i*0.12); o.stop(t+i*0.12+0.25); }); break;
+      }
+    } catch(e) {}
+  }
+};
+
+/* ===================== 关卡数据（经典可解） ===================== */
 const LEVELS = [
-  // 第1关 - 教学
   {
     name: "入门",
     map: [
-      "  ##### ",
-      "###   # ",
-      "#   $ # ",
-      "#  .  # ",
-      "#  @  # ",
-      "####### "
+      "  #####  ",
+      "  #   #  ",
+      "  # $ #  ",
+      "  # . #  ",
+      "  # @ #  ",
+      "  #####  "
     ]
   },
-  // 第2关
   {
-    name: "双箱",
+    name: "转向",
     map: [
       "  #####  ",
-      "###   ###",
+      "  #   #  ",
+      "  # $ #  ",
+      "### . ###",
       "#   $   #",
-      "# .   . #",
-      "#   $   #",
+      "#   .   #",
       "#   @   #",
       "#########"
     ]
   },
-  // 第3关 - 经典微缩小关
   {
-    name: "转角",
+    name: "双箱",
     map: [
       "#######",
       "#     #",
       "# .$. #",
-      "# $@$ #",
-      "# .$. #",
+      "#  $  #",
+      "# .@. #",
       "#     #",
       "#######"
     ]
   },
-  // 第4关
   {
     name: "走廊",
     map: [
@@ -156,93 +166,88 @@ const LEVELS = [
       "#      #",
       "# .  . #",
       "#  $$  #",
-      "# .  . #",
-      "#  @   #",
+      "#  .@  #",
+      "#      #",
       "########"
     ]
   },
-  // 第5关
   {
     name: "迷宫",
     map: [
-      "  ####  ",
-      "  #  ###",
-      "###$   #",
-      "#   .# #",
-      "#  . $@#",
-      "#  $ . #",
-      "########"
+      "  #####  ",
+      "###   ###",
+      "# $ .   #",
+      "#   # $ #",
+      "# .   . #",
+      "#   $   #",
+      "#   @   #",
+      "#########"
     ]
   },
-  // 第6关
   {
-    name: "仓库",
+    name: "围墙",
     map: [
       "#########",
       "#       #",
-      "# . . . #",
-      "#  $$$  #",
-      "# . . . #",
+      "# .   . #",
+      "#  $ $  #",
+      "# . $ . #",
       "#   @   #",
+      "#       #",
       "#########"
     ]
   },
-  // 第7关
   {
-    name: "狭路",
+    name: "角落",
     map: [
       "#######",
-      "# .  .#",
-      "#  $  #",
-      "##$ $##",
-      "#  $  #",
-      "# . @.#",
       "#     #",
+      "# .$. #",
+      "# $.$ #",
+      "# .$. #",
+      "#  @  #",
       "#######"
     ]
   },
-  // 第8关
+  {
+    name: "通道",
+    map: [
+      "#########",
+      "#       #",
+      "# .   . #",
+      "#  $$$  #",
+      "# .   . #",
+      "#   @   #",
+      "#       #",
+      "#########"
+    ]
+  },
   {
     name: " tricky",
     map: [
-      "  #####  ",
-      "  #   ###",
-      "### #   #",
-      "# $   # #",
-      "# #  .  #",
-      "#   .@ .#",
-      "#  $  ###",
-      "#######  "
+      "  #######  ",
+      "  #     #  ",
+      "### .$. ###",
+      "#   $ $   #",
+      "# .     . #",
+      "#   $ $   #",
+      "### .$. ###",
+      "  #  @  #  ",
+      "  #######  "
     ]
   },
-  // 第9关
-  {
-    name: "复杂",
-    map: [
-      "#######",
-      "#     #",
-      "# .$. #",
-      "# $.$ #",
-      "# .$. #",
-      "# $.$ #",
-      "# .@. #",
-      "#     #",
-      "#######"
-    ]
-  },
-  // 第10关
   {
     name: "大师",
     map: [
-      "#########",
-      "#   #   #",
-      "# $ . $ #",
-      "# . # . #",
-      "# $ # $ #",
-      "# . # . #",
-      "# $ . $ #",
-      "#   @   #",
-      "#########"
+      "###########",
+      "#    #    #",
+      "# .  $  . #",
+      "#  $ # $  #",
+      "# .  $  . #",
+      "#    #    #",
+      "# . $ $ . #",
+      "#    @    #",
+      "###########"
     ]
   }
 ];
@@ -250,27 +255,27 @@ const LEVELS = [
 /* ===================== 游戏引擎 ===================== */
 const game = {
   levelIdx: 0,
-  map: [],        // 当前地图状态 (2D数组)
-  initial: [],    // 初始状态备份
-  history: [],    // 操作历史 for undo
+  map: [],
+  initMap: [],
+  playerPos: {x:0, y:0},
   steps: 0,
+  history: [],
+  completed: new Set(),
   width: 0,
   height: 0,
-  playerPos: {x:0, y:0},
-  completed: new Set(),
 
   init() {
-    document.getElementById('totalLevels').textContent = LEVELS.length;
-    this.buildLevelSelect();
+    document.getElementById('lvTotal').textContent = LEVELS.length;
+    this.buildTabs();
     this.loadLevel(0);
   },
 
-  buildLevelSelect() {
-    const el = document.getElementById('levelSelect');
+  buildTabs() {
+    const el = document.getElementById('levelTabs');
     el.innerHTML = '';
     LEVELS.forEach((lv, i) => {
       const btn = document.createElement('button');
-      btn.className = 'level-tag' + (i===this.levelIdx?' active':'') + (this.completed.has(i)?' completed':'');
+      btn.className = 'level-tab' + (i===this.levelIdx ? ' active' : '') + (this.completed.has(i) ? ' done' : '');
       btn.textContent = (i+1);
       btn.onclick = () => this.loadLevel(i);
       el.appendChild(btn);
@@ -281,20 +286,18 @@ const game = {
     this.levelIdx = idx;
     this.steps = 0;
     this.history = [];
-    document.getElementById('levelNum').textContent = idx + 1;
-    document.getElementById('stepCount').textContent = 0;
+    document.getElementById('lvNum').textContent = idx + 1;
+    document.getElementById('steps').textContent = 0;
     document.getElementById('winModal').classList.remove('show');
 
-    // 解析地图
     const src = LEVELS[idx].map;
     this.height = src.length;
     this.width = Math.max(...src.map(r => r.length));
     this.map = [];
-    this.initial = [];
+    this.initMap = [];
 
     for (let y = 0; y < this.height; y++) {
-      const row = [];
-      const initRow = [];
+      const row = [], initRow = [];
       for (let x = 0; x < this.width; x++) {
         const ch = src[y][x] || ' ';
         let cell = 'floor';
@@ -308,17 +311,17 @@ const game = {
         initRow.push(cell);
       }
       this.map.push(row);
-      this.initial.push([...initRow]);
+      this.initMap.push([...initRow]);
     }
 
-    this.buildLevelSelect();
+    this.buildTabs();
     this.render();
   },
 
   render() {
     const board = document.getElementById('board');
     board.innerHTML = '';
-    board.style.gridTemplateColumns = `repeat(${this.width}, 36px)`;
+    board.style.gridTemplateColumns = `repeat(${this.width}, 1fr)`;
 
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
@@ -327,26 +330,19 @@ const game = {
         board.appendChild(cell);
       }
     }
-    document.getElementById('stepCount').textContent = this.steps;
-  },
-
-  // 获取底层地形（目标点或地板）
-  baseOf(cell) {
-    if (cell === 'box') return 'floor';
-    if (cell === 'player') return 'floor';
-    if (cell === 'box-on-target') return 'target';
-    if (cell === 'player-on-target') return 'target';
-    return cell;
+    document.getElementById('steps').textContent = this.steps;
   },
 
   // 判断是否是箱子
-  isBox(cell) {
-    return cell === 'box' || cell === 'box-on-target';
-  },
+  isBox(cell) { return cell === 'box' || cell === 'box-on-target'; },
 
-  // 判断是否是玩家
-  isPlayer(cell) {
-    return cell === 'player' || cell === 'player-on-target';
+  // 记录快照
+  saveSnapshot() {
+    this.history.push({
+      map: this.map.map(r => [...r]),
+      playerPos: {...this.playerPos},
+      steps: this.steps
+    });
   },
 
   move(dx, dy) {
@@ -362,10 +358,7 @@ const game = {
     const nextCell = this.map[ny][nx];
 
     // 撞墙
-    if (nextCell === 'wall') {
-      // AudioSys.play('error');
-      return;
-    }
+    if (nextCell === 'wall') { AudioSys.play('wall'); return; }
 
     // 推箱子
     if (this.isBox(nextCell)) {
@@ -373,75 +366,57 @@ const game = {
       const by = ny + dy;
       if (bx < 0 || bx >= this.width || by < 0 || by >= this.height) return;
       const behind = this.map[by][bx];
-      if (behind === 'wall' || this.isBox(behind)) return; // 推不动
+      if (behind === 'wall' || this.isBox(behind)) { AudioSys.play('wall'); return; }
 
-      // 记录历史
-      this.history.push({px, py, bx:nx, by:ny, pushed:true});
+      this.saveSnapshot();
 
-      // 移动箱子
-      const boxBase = this.baseOf(nextCell);
-      const newBoxCell = (behind === 'target') ? 'box-on-target' : 'box';
-      this.map[by][bx] = newBoxCell;
+      // 箱子后面的位置
+      this.map[by][bx] = (behind === 'target') ? 'box-on-target' : 'box';
 
-      // 移动玩家到箱子原位置
-      this.map[ny][nx] = (boxBase === 'target') ? 'player-on-target' : 'player';
+      // 箱子原来的位置变成玩家
+      this.map[ny][nx] = (nextCell === 'box-on-target') ? 'player-on-target' : 'player';
 
-      // 玩家原位置恢复
-      const playerBase = this.baseOf(this.map[py][px]);
-      this.map[py][px] = playerBase;
+      // 玩家原来的位置恢复
+      this.map[py][px] = (this.map[py][px] === 'player-on-target') ? 'target' : 'floor';
 
       this.playerPos = {x: nx, y: ny};
       this.steps++;
+      AudioSys.play('push');
       this.render();
       this.checkWin();
       return;
     }
 
     // 普通移动
-    this.history.push({px, py, bx:-1, by:-1, pushed:false});
-    const nextBase = this.baseOf(nextCell);
-    this.map[ny][nx] = (nextBase === 'target') ? 'player-on-target' : 'player';
-    const playerBase = this.baseOf(this.map[py][px]);
-    this.map[py][px] = playerBase;
+    this.saveSnapshot();
+
+    this.map[ny][nx] = (nextCell === 'target') ? 'player-on-target' : 'player';
+    this.map[py][px] = (this.map[py][px] === 'player-on-target') ? 'target' : 'floor';
+
     this.playerPos = {x: nx, y: ny};
     this.steps++;
+    AudioSys.play('move');
     this.render();
   },
 
   undo() {
     if (this.history.length === 0) return;
-    const last = this.history.pop();
-    const {px, py, bx, by, pushed} = last;
-
-    // 恢复玩家位置
-    const curPx = this.playerPos.x;
-    const curPy = this.playerPos.y;
-    const curBase = this.baseOf(this.map[curPy][curPx]);
-    this.map[curPy][curPx] = curBase;
-
-    if (pushed) {
-      // 箱子回到bx,by
-      const boxBase = this.baseOf(this.map[by][bx]);
-      this.map[by][bx] = (boxBase === 'target') ? 'box-on-target' : 'box';
-      // 玩家原位置是箱子原来的位置，现在变成玩家
-      this.map[py][px] = (this.baseOf(this.map[py][px]) === 'target') ? 'player-on-target' : 'player';
-    } else {
-      this.map[py][px] = (this.baseOf(this.map[py][px]) === 'target') ? 'player-on-target' : 'player';
-    }
-
-    this.playerPos = {x: px, y: py};
-    this.steps = Math.max(0, this.steps - 1);
+    const snap = this.history.pop();
+    this.map = snap.map.map(r => [...r]);
+    this.playerPos = {...snap.playerPos};
+    this.steps = snap.steps;
+    AudioSys.play('undo');
     this.render();
   },
 
   reset() {
-    this.map = this.initial.map(r => [...r]);
+    this.map = this.initMap.map(r => [...r]);
     this.steps = 0;
     this.history = [];
     // 重新找玩家位置
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
-        if (this.isPlayer(this.map[y][x])) {
+        if (this.map[y][x] === 'player' || this.map[y][x] === 'player-on-target') {
           this.playerPos = {x, y};
         }
       }
@@ -451,17 +426,16 @@ const game = {
   },
 
   checkWin() {
-    // 检查是否所有目标点都被箱子覆盖
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
-        const cell = this.map[y][x];
-        if (cell === 'target') return; // 还有空目标点
+        if (this.map[y][x] === 'target') return;
       }
     }
-    // 胜利
     this.completed.add(this.levelIdx);
     document.getElementById('winMsg').textContent = `第 ${this.levelIdx + 1} 关通过！用了 ${this.steps} 步`;
     document.getElementById('winModal').classList.add('show');
+    AudioSys.play('win');
+    this.buildTabs();
   },
 
   nextLevel() {
@@ -474,7 +448,7 @@ const game = {
   }
 };
 
-// 键盘控制
+/* ===================== 键盘控制 ===================== */
 document.addEventListener('keydown', e => {
   switch(e.key) {
     case 'ArrowUp': case 'w': case 'W': game.move(0, -1); e.preventDefault(); break;
@@ -485,6 +459,32 @@ document.addEventListener('keydown', e => {
     case 'r': case 'R': game.reset(); break;
   }
 });
+
+/* ===================== 触摸控制（防误触） ===================== */
+function bindTouch(id, dx, dy) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+
+  // 使用 touchstart 并阻止默认行为（防止滚动、双击缩放）
+  btn.addEventListener('touchstart', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    game.move(dx, dy);
+  }, {passive: false, capture: true});
+
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    game.move(dx, dy);
+  });
+}
+
+bindTouch('btnUp', 0, -1);
+bindTouch('btnDown', 0, 1);
+bindTouch('btnLeft', -1, 0);
+bindTouch('btnRight', 1, 0);
+
+// 阻止页面滚动（方向键不滚动页面）
+document.addEventListener('touchmove', e => { e.preventDefault(); }, {passive: false});
 
 // 初始化
 game.init();
