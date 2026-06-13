@@ -117,6 +117,7 @@
         }
 
         .game-card.mahjong .cover { background: linear-gradient(135deg, #1a472a, #166534); }
+        .game-card.sokoban .cover { background: linear-gradient(135deg, #4338ca, #6366f1); }
 
         /* ===== 全屏游戏层 ===== */
         .game-layer {
@@ -226,12 +227,12 @@
                 </div>
             </div>
 
-            <!-- 拼图 -->
-            <div class="game-card puzzle" onclick="launchGame('puzzle', '🧩 拼图', 'inline')">
-                <div class="cover">🧩</div>
+            <!-- 推箱子 -->
+            <div class="game-card sokoban" onclick="launchGame('sokoban', '📦 推箱子', 'iframe')">
+                <div class="cover">📦</div>
                 <div class="info">
-                    <h3>拼图</h3>
-                    <p>滑动拼图，还原图片</p>
+                    <h3>推箱子</h3>
+                    <p>经典益智，10关卡，方向键 / WASD</p>
                     <span class="tag puzzle">益智</span>
                 </div>
             </div>
@@ -264,6 +265,7 @@
             tetris: '俄罗斯方块.html', // ← 桌面已有的俄罗斯方块
             plane: '飞机大战.html', // ← 桌面已有的飞机大战
             mahjong: '南京麻将.html', // ← 南京麻将
+            sokoban: '推箱子.html', // ← 推箱子
             puzzle: null
         };
 
