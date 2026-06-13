@@ -221,7 +221,7 @@ function createDeck() {
   const deck=[]; let id=0;
   for(const s of ['man','suo','tong']) {
     for(let v=1;v<=9;v++) {
-      for(let i=0;i<4;i++) deck.push({id:id++, type:'num', suit:s, value:v, icon:TILES[s][v-1], txt:SUITS[s], isHua:false});
+      for(let i=0;i<4;i++) deck.push({id:id++, type:'num', suit:s, value:v, icon:TILES[s][v-1], txt:SUIT_NAMES[s], isHua:false});
     }
   }
   for(let i=0;i<4;i++) {
